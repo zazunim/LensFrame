@@ -1,0 +1,119 @@
+name: Release Multi-Platform Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            target: 'aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-13'
+            target: 'x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            target: ''
+            args: ''
+          - platform: 'windows-latest'
+            target: ''
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target != '' && matrix.target || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './packages/desktop/src-tauri -> target'
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Core and Web packages
+        run: |
+          npm --workspace=@exif-frame/core run build
+          npm --workspace=@exif-frame/web run build
+
+      - name: Build Tauri Desktop (App / DMG / AppImage / DEB / MSI / NSIS)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: './packages/desktop'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'LensFrame ${{ github.ref_name }}'
+          releaseBody: |
+            ## LensFrame (렌즈프레임) ${{ github.ref_name }}
+            
+            Multi-platform EXIF Photo Frame Generator for Windows, macOS, and Linux.
+            
+            ### Downloads:
+            - **Windows**:
+              - Portable: `LensFrame-Portable.exe` / `LensFrame-Portable-Windows-x64.zip`
+              - Installer: `LensFrame_*_x64-setup.exe` or `.msi`
+            - **macOS**:
+              - Apple Silicon (M1/M2/M3/M4): `LensFrame_*_aarch64.dmg`
+              - Intel Mac: `LensFrame_*_x64.dmg`
+            - **Linux**:
+              - AppImage: `LensFrame_*_amd64.AppImage`
+              - Debian / Ubuntu: `LensFrame_*_amd64.deb`
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Package Windows Portable Executable
+        if: matrix.platform == 'windows-latest'
+        run: |
+          node scripts/build-portable.js
+          Compress-Archive -Path "dist-portable/LensFrame-Portable.exe" -DestinationPath "dist-portable/LensFrame-Portable-Windows-x64.zip" -Force
+
+      - name: Upload Windows Portable to Release
+        if: matrix.platform == 'windows-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: |
+            dist-portable/LensFrame-Portable.exe
+            dist-portable/LensFrame-Portable-Windows-x64.zip
