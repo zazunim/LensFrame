@@ -70,8 +70,8 @@ npm run build:portable
 ### 2. 크로스 플랫폼 자동 빌드 (GitHub Actions)
 저장소에 버전 태그를 푸시하면 GitHub Actions가 자동으로 각 OS 클라우드 서버에서 빌드하여 GitHub Release에 설치 파일을 등록합니다:
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
 ---
