@@ -23,7 +23,8 @@ import {
   FolderArchive,
   Layers,
   Globe,
-  Settings2
+  Settings2,
+  X
 } from 'lucide-react';
 import { Language, LANGUAGES, translations, getDefaultLanguage } from './i18n.js';
 
@@ -97,11 +98,8 @@ export function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // 기본 초기 샘플 생성 (언어 변경 시에도 가이드 텍스트 업데이트)
-  useEffect(() => {
-    // 사용자가 직접 사진을 올린 적이 없다면 샘플 이미지를 언어에 맞춰 갱신
-    if (images.length > 0 && images[0].id !== 'sample-1') return;
-
+  // 기본 초기 샘플 생성 함수
+  const createSampleItem = async (targetLang: Language): Promise<ImageItem> => {
     const canvas = document.createElement('canvas');
     canvas.width = 1600;
     canvas.height = 1067;
@@ -116,31 +114,38 @@ export function App() {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.font = '600 50px Barlow, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(t('sampleTitle'), 800, 500);
+    ctx.fillText(translations[targetLang]?.sampleTitle || translations['ko'].sampleTitle, 800, 500);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.font = '400 30px Barlow, sans-serif';
-    ctx.fillText(t('sampleSub'), 800, 570);
+    ctx.fillText(translations[targetLang]?.sampleSub || translations['ko'].sampleSub, 800, 570);
 
-    createImageBitmap(canvas).then((bmp) => {
-      setImages([
-        {
-          id: 'sample-1',
-          file: new File([], 'sample.jpg'),
-          bitmap: bmp,
-          name: 'sample.jpg',
-          exif: {
-            make: 'Sony',
-            model: 'ILCE-7M4',
-            lensModel: 'FE 35mm F1.4 GM',
-            focalLength: '35mm',
-            fNumber: 'f/1.4',
-            exposureTime: '1/500s',
-            iso: '100',
-            dateTime: '2024:10:17 14:30:00'
-          }
-        }
-      ]);
+    const bmp = await createImageBitmap(canvas);
+    return {
+      id: 'sample-1',
+      file: new File([], 'sample.jpg'),
+      bitmap: bmp,
+      name: 'sample.jpg',
+      exif: {
+        make: 'Sony',
+        model: 'ILCE-7M4',
+        lensModel: 'FE 35mm F1.4 GM',
+        focalLength: '35mm',
+        fNumber: 'f/1.4',
+        exposureTime: '1/500s',
+        iso: '100',
+        dateTime: '2024:10:17 14:30:00'
+      }
+    };
+  };
+
+  // 기본 초기 샘플 생성 (언어 변경 시에도 가이드 텍스트 업데이트)
+  useEffect(() => {
+    // 사용자가 직접 사진을 올린 상태라면 샘플로 덮어쓰지 않음
+    if (images.length > 0 && images[0].id !== 'sample-1') return;
+
+    createSampleItem(lang).then((sample) => {
+      setImages([sample]);
     });
   }, [lang]);
 
@@ -381,11 +386,35 @@ export function App() {
   };
 
   // 특정 사진 삭제
-  const handleRemoveImage = (index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setImages((prev) => prev.filter((_, idx) => idx !== index));
-    if (selectedIndex >= index && selectedIndex > 0) {
-      setSelectedIndex(selectedIndex - 1);
+  const handleRemoveImage = (index: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (images.length === 1 && images[0].id === 'sample-1') return;
+
+    const nextList = images.filter((_, idx) => idx !== index);
+    if (nextList.length === 0) {
+      // 모든 이미지를 삭제하면 친절한 안내 샘플 화면으로 안전하게 복귀
+      createSampleItem(lang).then((sample) => {
+        setImages([sample]);
+        setSelectedIndex(0);
+      });
+    } else {
+      setImages(nextList);
+      if (selectedIndex >= nextList.length) {
+        setSelectedIndex(nextList.length - 1);
+      } else if (selectedIndex === index && index > 0) {
+        setSelectedIndex(index - 1);
+      }
+    }
+  };
+
+  // 전체 사진 비우기
+  const handleClearAll = () => {
+    if (images.length === 1 && images[0].id === 'sample-1') return;
+    if (window.confirm(t('confirmClearAll'))) {
+      createSampleItem(lang).then((sample) => {
+        setImages([sample]);
+        setSelectedIndex(0);
+      });
     }
   };
 
@@ -503,6 +532,7 @@ export function App() {
 
           {/* 하단: 다중 이미지 필름 스트립 (Film Strip) */}
           <div className="h-24 border-t border-neutral-800/80 bg-neutral-900/80 backdrop-blur px-4 py-2 flex items-center gap-3 overflow-x-auto">
+            {/* 사진 추가 버튼 */}
             <button
               onClick={() => fileInputRef.current?.click()}
               className="w-16 h-16 rounded-lg border-2 border-dashed border-neutral-700 hover:border-indigo-500 flex flex-col items-center justify-center text-neutral-400 hover:text-indigo-400 transition flex-shrink-0"
@@ -512,6 +542,19 @@ export function App() {
               <span className="text-[10px] mt-1">{t('addMore')}</span>
             </button>
 
+            {/* 전체 사진 비우기 버튼 */}
+            {images.length > 0 && images[0].id !== 'sample-1' && (
+              <button
+                onClick={handleClearAll}
+                className="w-16 h-16 rounded-lg border border-red-900/40 hover:border-red-500 bg-red-950/20 hover:bg-red-900/30 flex flex-col items-center justify-center text-red-400 hover:text-red-300 transition flex-shrink-0 group"
+                title={t('clearAll')}
+              >
+                <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] mt-1 whitespace-nowrap">{t('clearAll')}</span>
+              </button>
+            )}
+
+            {/* 썸네일 리스트 */}
             {images.map((item, idx) => (
               <div
                 key={item.id}
@@ -519,7 +562,7 @@ export function App() {
                 className={`relative group w-16 h-16 rounded-lg overflow-hidden border-2 cursor-pointer flex-shrink-0 transition ${
                   selectedIndex === idx
                     ? 'border-indigo-500 ring-2 ring-indigo-500/30'
-                    : 'border-neutral-800 opacity-60 hover:opacity-100 hover:border-neutral-600'
+                    : 'border-neutral-800 opacity-70 hover:opacity-100 hover:border-neutral-600'
                 }`}
               >
                 <div 
@@ -530,13 +573,13 @@ export function App() {
                   }}
                 />
                 
-                {images.length > 1 && (
+                {item.id !== 'sample-1' && (
                   <button
                     onClick={(e) => handleRemoveImage(idx, e)}
-                    className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-red-600 rounded text-neutral-300 hover:text-white opacity-0 group-hover:opacity-100 transition"
+                    className="absolute top-1 right-1 p-1 bg-neutral-900/90 hover:bg-red-600 rounded-full text-neutral-300 hover:text-white opacity-80 group-hover:opacity-100 transition shadow border border-neutral-700/60"
                     title={t('removePhoto')}
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <X className="w-3 h-3" />
                   </button>
                 )}
 
@@ -761,9 +804,20 @@ export function App() {
                   <ImageIcon className="w-4 h-4 text-indigo-400" />
                   <span>{t('metadataEdit')}</span>
                 </div>
-                <span className="text-[11px] text-neutral-500 font-normal truncate max-w-[120px]">
-                  {currentImage.name}
-                </span>
+                {currentImage.id !== 'sample-1' ? (
+                  <button
+                    onClick={() => handleRemoveImage(selectedIndex)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-red-400 hover:text-red-300 bg-red-950/30 hover:bg-red-900/50 rounded-md border border-red-800/40 transition"
+                    title={t('removeCurrent')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{t('removePhoto')}</span>
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-neutral-500 font-normal truncate max-w-[120px]">
+                    {currentImage.name}
+                  </span>
+                )}
               </div>
               <div className="flex flex-col gap-2.5">
                 <div>
@@ -840,6 +894,16 @@ export function App() {
                     />
                   </div>
                 </div>
+
+                {currentImage.id !== 'sample-1' && (
+                  <button
+                    onClick={() => handleRemoveImage(selectedIndex)}
+                    className="w-full mt-2 py-2 px-3 flex items-center justify-center gap-2 text-xs font-medium text-red-400 hover:text-red-300 bg-red-950/25 hover:bg-red-900/40 rounded-lg border border-red-900/40 transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{t('removeCurrent')}</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
