@@ -98,7 +98,7 @@ jobs:
             - **Linux**:
               - AppImage: `LensFrame_*_amd64.AppImage`
               - Debian / Ubuntu: `LensFrame_*_amd64.deb`
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
@@ -113,7 +113,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          draft: true
+          draft: false
           files: |
             dist-portable/LensFrame-Portable.exe
             dist-portable/LensFrame-Portable-Windows-x64.zip
