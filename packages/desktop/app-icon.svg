@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <!-- 외곽 프레임 모티브 -->
+  <rect x="76" y="76" width="360" height="360" rx="32" fill="none" stroke="#ffffff" stroke-width="24" stroke-opacity="0.9" />
+  <!-- 렌즈 조리개/카메라 서클 -->
+  <circle cx="256" cy="240" r="90" fill="none" stroke="#ffffff" stroke-width="24" />
+  <circle cx="256" cy="240" r="45" fill="#ffffff" fill-opacity="0.8" />
+  <!-- 하단 프레임 메타 텍스트 라인 모티브 -->
+  <rect x="130" y="375" width="120" height="18" rx="9" fill="#ffffff" fill-opacity="0.9" />
+  <rect x="270" y="375" width="112" height="18" rx="9" fill="#ffffff" fill-opacity="0.6" />
+</svg>

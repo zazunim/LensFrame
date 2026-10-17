@@ -1,0 +1,22 @@
+{
+  "name": "exif-frame-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=@exif-frame/web run dev",
+    "build:web": "npm --workspace=@exif-frame/web run build",
+    "build:core": "npm --workspace=@exif-frame/core run build",
+    "cap:sync": "npm --workspace=@exif-frame/mobile run sync",
+    "cap:open:android": "npm --workspace=@exif-frame/mobile run open:android",
+    "cap:open:ios": "npm --workspace=@exif-frame/mobile run open:ios",
+    "tauri:dev": "npm --workspace=@exif-frame/desktop run dev",
+    "tauri:build": "npm --workspace=@exif-frame/desktop run build",
+    "build:portable": "node scripts/build-portable.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.3"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for LensFrame",
+  "windows": ["main", "*"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:webview:default",
+    "fs:default",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "dialog:default",
+    "dialog:allow-save"
+  ]
+}
